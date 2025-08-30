@@ -4,12 +4,11 @@ A web-based tool to calculate the historical USD value of Handshake (HNS) tokens
 
 ## Features
 
-- 📅 Date picker with calendar interface
-- 💰 Real-time HNS price display
-- 📊 Precise average price calculations
-- 💵 USD and BTC value conversions
-- 📱 Responsive design
-- 🎨 Clean, dark theme UI
+- Date picker with calendar interface
+- Current HNS price display
+- Precise average price calculations
+- USD and BTC value conversions
+- Responsive design
 
 ## Dependencies
 
