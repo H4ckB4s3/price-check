@@ -4,11 +4,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101827">
   <title>HNS Historical Price Calculator</title>
 
   <link rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="css/style.css">
   <script src="js/warning.js" defer></script>
 </head>
@@ -16,7 +16,7 @@
 <body>
   <header>
     <h1>HNS Historical Price Calculator</h1>
-    <p class="description">Calculate the USD/BTC value</p>
+    <p class="description">Calculate the historical USD/BTC value</p>
 
     <div class="current-price">
       <i class="fas fa-coins"></i>
@@ -25,19 +25,17 @@
     </div>
   </header>
 
-  <div class="container">
-
-    <!-- Date selector -->
+  <main class="container">
     <div class="input-group">
       <label for="date-display">Date</label>
 
       <div class="date-selector">
-        <div class="date-display" id="date-display">
+        <button type="button" class="date-display" id="date-display">
           <span id="selected-date">Select a date</span>
           <i class="fas fa-calendar-alt"></i>
-        </div>
+        </button>
 
-        <div class="calendar-popup" id="calendar-popup">
+        <div class="calendar-popup" id="calendar-popup" style="display:none;">
           <div class="calendar-header">
             <button type="button" id="prev-month" aria-label="Previous month">
               <i class="fas fa-chevron-left"></i>
@@ -45,7 +43,7 @@
 
             <div>
               <span id="calendar-month"></span>
-              <select id="calendar-year" aria-label="Select year"></select>
+              <select id="calendar-year" aria-label="Calendar year"></select>
             </div>
 
             <button type="button" id="next-month" aria-label="Next month">
@@ -68,8 +66,9 @@
       </div>
     </div>
 
-    <!-- HNS amount -->
     <div class="input-group">
+      <label for="amount">HNS amount</label>
+
       <div class="hns-input">
         <span class="hns-prefix">HNS</span>
         <input
@@ -96,20 +95,19 @@
 
     <div class="error" id="error" role="alert" style="display:none;"></div>
 
-    <!-- Results -->
-    <div class="result" id="result" style="display:none;">
+    <section class="result" id="result" style="display:none;">
       <h3>Historical Value</h3>
       <div class="price" id="price">$0.00</div>
-      <div class="price" id="price-btc">0.00000000 BTC</div>
+      <div class="price" id="price-btc">0.000000000000 BTC</div>
       <div class="date-info" id="date-info"></div>
-    </div>
-  </div>
+    </section>
+  </main>
 
   <footer>
     &copy; <span id="current-year"></span> -
-    <a href="https://github.com/H4ckB4s3/price-check"
-       target="_blank" rel="noopener noreferrer">Github</a> |
-    <a href="https://price.hns.dev/"
+    <a href="https://github.com/Falci/price.hns.dev"
+       target="_blank" rel="noopener noreferrer">API Source</a> |
+    <a href="https://price.hns.dev/documentation.html"
        target="_blank" rel="noopener noreferrer">Price API</a> |
     <a href="https://shakeshift.com"
        target="_blank" rel="noopener noreferrer">Explorer</a>
@@ -117,17 +115,32 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('current-year').textContent =
-        new Date().getFullYear();
+      'use strict';
+
+      const API = '/api';
+      const MIN_DATE = new Date(Date.UTC(2020, 1, 13));
 
       let currentDate = new Date();
       let selectedDate = null;
       let requestInProgress = false;
 
-      // Use UTC dates consistently for date comparisons.
-      const minDate = new Date(Date.UTC(2020, 1, 13));
+      const $ = id => document.getElementById(id);
 
-      function getTodayUTC() {
+      const yearSelect = $('calendar-year');
+      const monthLabel = $('calendar-month');
+      const calendarDays = $('calendar-days');
+      const calendarPopup = $('calendar-popup');
+      const dateDisplay = $('date-display');
+      const selectedDateLabel = $('selected-date');
+      const amountInput = $('amount');
+      const calculateBtn = $('calculate-btn');
+      const loading = $('loading');
+      const errorBox = $('error');
+      const result = $('result');
+
+      $('current-year').textContent = new Date().getFullYear();
+
+      function todayUTC() {
         const now = new Date();
         return new Date(Date.UTC(
           now.getFullYear(),
@@ -136,65 +149,44 @@
         ));
       }
 
-      const yearSelect = document.getElementById('calendar-year');
-      const monthLabel = document.getElementById('calendar-month');
-      const calendarDays = document.getElementById('calendar-days');
-      const calendarPopup = document.getElementById('calendar-popup');
-      const dateDisplay = document.getElementById('date-display');
-      const selectedDateLabel = document.getElementById('selected-date');
-      const amountInput = document.getElementById('amount');
-      const calculateBtn = document.getElementById('calculate-btn');
-      const loading = document.getElementById('loading');
-      const errorBox = document.getElementById('error');
-      const result = document.getElementById('result');
+      function formatDate(date) {
+        return [
+          date.getUTCFullYear(),
+          String(date.getUTCMonth() + 1).padStart(2, '0'),
+          String(date.getUTCDate()).padStart(2, '0')
+        ].join('-');
+      }
 
-      // Populate the year dropdown.
-      const firstYear = minDate.getUTCFullYear();
-      const lastYear = new Date().getFullYear();
-
-      for (let y = firstYear; y <= lastYear; y++) {
+      // Fill the calendar year dropdown.
+      for (
+        let year = MIN_DATE.getUTCFullYear();
+        year <= todayUTC().getUTCFullYear();
+        year++
+      ) {
         const option = document.createElement('option');
-        option.value = y;
-        option.textContent = y;
+        option.value = year;
+        option.textContent = year;
         yearSelect.appendChild(option);
       }
 
-      // Format a date as YYYY-MM-DD.
-      function formatDate(date) {
-        const year = date.getUTCFullYear();
-        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(date.getUTCDate()).padStart(2, '0');
+      function showError(message) {
+        errorBox.textContent = message;
+        errorBox.style.display = 'block';
+      }
 
-        return `${year}-${month}-${day}`;
+      function clearError() {
+        errorBox.textContent = '';
+        errorBox.style.display = 'none';
       }
 
       function updateCalendar() {
-        const today = getTodayUTC();
-
-        if (currentDate < minDate) {
-          currentDate = new Date(minDate);
-        }
-
-        if (
-          currentDate.getFullYear() > today.getUTCFullYear() ||
-          (
-            currentDate.getFullYear() === today.getUTCFullYear() &&
-            currentDate.getMonth() > today.getUTCMonth()
-          )
-        ) {
-          currentDate = new Date(
-            today.getUTCFullYear(),
-            today.getUTCMonth(),
-            1
-          );
-        }
+        const today = todayUTC();
 
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
 
-        monthLabel.textContent = currentDate.toLocaleString('en-US', {
-          month: 'long'
-        });
+        monthLabel.textContent = new Date(year, month, 1)
+          .toLocaleString('en-US', { month: 'long' });
 
         yearSelect.value = year;
         calendarDays.innerHTML = '';
@@ -203,90 +195,75 @@
         const daysInMonth = new Date(year, month + 1, 0).getDate();
 
         for (let i = 0; i < firstDay; i++) {
-          const emptyCell = document.createElement('div');
-          emptyCell.className = 'calendar-cell empty';
-          calendarDays.appendChild(emptyCell);
+          const empty = document.createElement('div');
+          empty.className = 'calendar-cell empty';
+          calendarDays.appendChild(empty);
         }
 
-        for (let d = 1; d <= daysInMonth; d++) {
-          const cellDate = new Date(Date.UTC(year, month, d));
-          const cell = document.createElement('div');
+        for (let day = 1; day <= daysInMonth; day++) {
+          const cellDate = new Date(Date.UTC(year, month, day));
+          const cell = document.createElement('button');
 
+          cell.type = 'button';
           cell.className = 'calendar-cell';
-          cell.textContent = d;
+          cell.textContent = day;
 
-          const dateString = formatDate(cellDate);
-          const isDisabled =
-            cellDate < minDate || cellDate > today;
+          const disabled =
+            cellDate < MIN_DATE || cellDate > today;
 
-          if (isDisabled) {
+          if (disabled) {
             cell.classList.add('disabled');
-            cell.setAttribute('aria-disabled', 'true');
-          } else {
-            cell.setAttribute('role', 'button');
-            cell.setAttribute('tabindex', '0');
-            cell.setAttribute('aria-label', dateString);
+            cell.disabled = true;
+          }
 
-            if (
-              selectedDate &&
-              dateString === formatDate(selectedDate)
-            ) {
-              cell.classList.add('selected');
-            }
+          if (
+            selectedDate &&
+            formatDate(selectedDate) === formatDate(cellDate)
+          ) {
+            cell.classList.add('selected');
+          }
 
-            const chooseDate = () => {
+          if (!disabled) {
+            cell.addEventListener('click', () => {
               selectedDate = cellDate;
-              selectedDateLabel.textContent = dateString;
+              selectedDateLabel.textContent = formatDate(cellDate);
               calendarPopup.style.display = 'none';
               updateCalendar();
-              hideError();
-            };
-
-            cell.addEventListener('click', chooseDate);
-
-            cell.addEventListener('keydown', event => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                chooseDate();
-              }
+              clearError();
             });
           }
 
           calendarDays.appendChild(cell);
         }
 
-        document.getElementById('prev-month').disabled =
-          year === firstYear && month === 1;
+        $('prev-month').disabled =
+          year === MIN_DATE.getUTCFullYear() && month === 1;
 
-        document.getElementById('next-month').disabled =
+        $('next-month').disabled =
           year === today.getUTCFullYear() &&
           month === today.getUTCMonth();
       }
 
-      updateCalendar();
-
       dateDisplay.addEventListener('click', () => {
-        const isOpen = calendarPopup.style.display === 'block';
-        calendarPopup.style.display = isOpen ? 'none' : 'block';
+        const open = calendarPopup.style.display === 'block';
+        calendarPopup.style.display = open ? 'none' : 'block';
       });
 
-      document.getElementById('prev-month').addEventListener('click', () => {
+      $('prev-month').addEventListener('click', () => {
         currentDate = new Date(
           currentDate.getFullYear(),
           currentDate.getMonth() - 1,
           1
         );
-
         updateCalendar();
       });
 
-      document.getElementById('next-month').addEventListener('click', () => {
+      $('next-month').addEventListener('click', () => {
         currentDate = new Date(
           currentDate.getFullYear(),
           currentDate.getMonth() + 1,
           1
         );
-
         updateCalendar();
       });
 
@@ -296,7 +273,6 @@
           currentDate.getMonth(),
           1
         );
-
         updateCalendar();
       });
 
@@ -309,113 +285,100 @@
         }
       });
 
-      function showError(message) {
-        errorBox.textContent = message;
-        errorBox.style.display = 'block';
-      }
+      // All requests go to the local Python server.
+      // server.py must implement these /api routes.
+      async function apiRequest(path) {
+        const response = await fetch(API + path, {
+          method: 'GET',
+          cache: 'no-store',
+          headers: { 'Accept': 'application/json, text/plain' }
+        });
 
-      function hideError() {
-        errorBox.textContent = '';
-        errorBox.style.display = 'none';
-      }
+        if (!response.ok) {
+          let detail = '';
 
-      // Current price. Uses the API directly, without a CORS proxy.
-      async function fetchCurrentPrice() {
-        const priceElement =
-          document.getElementById('current-price-value');
+          try {
+            detail = await response.text();
+          } catch (_) {}
 
-        try {
-          const response = await fetch(
-            'https://price.hns.dev/latest',
-            { cache: 'no-store' }
+          throw new Error(
+            `Local API returned HTTP ${response.status}` +
+            (detail ? `: ${detail.slice(0, 180)}` : '')
           );
+        }
 
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+        return response;
+      }
+
+      async function fetchCurrentPrice() {
+        try {
+          const response = await apiRequest('/latest?currency=usd');
+          const raw = await response.text();
+
+          let price;
+
+          try {
+            const parsed = JSON.parse(raw);
+            price = typeof parsed === 'number'
+              ? parsed
+              : Number(parsed.price ?? parsed.value);
+          } catch (_) {
+            price = Number(raw.trim());
           }
-
-          const text = await response.text();
-          const price = Number(text.trim());
 
           if (!Number.isFinite(price) || price < 0) {
-            throw new Error('Invalid current price response');
+            throw new Error('Invalid current price returned by the API');
           }
 
-          priceElement.textContent = `$${price.toFixed(6)}`;
+          $('current-price-value').textContent =
+            `$${price.toFixed(6)}`;
+
         } catch (err) {
           console.error('Current price request failed:', err);
-          priceElement.textContent = 'Unavailable';
+          $('current-price-value').textContent = 'Unavailable';
         }
       }
 
-      fetchCurrentPrice();
-
-      // Convert very small numbers to decimal notation.
-      function formatSmallNumber(num, precision = 12) {
-        if (!Number.isFinite(num)) {
-          return 'Unavailable';
-        }
-
-        // Avoid negative zero in displayed results.
-        if (Object.is(num, -0)) {
-          num = 0;
-        }
-
-        return num.toFixed(precision);
-      }
-
-      // Average only valid numeric prices.
       function calculatePreciseAverage(data) {
         if (!Array.isArray(data) || data.length === 0) {
-          throw new Error('No historical price data available');
+          throw new Error('No historical price data available for this date.');
         }
 
         const prices = data.map(item => Number(item.price));
 
-        if (
-          prices.some(price =>
-            !Number.isFinite(price) || price < 0
-          )
-        ) {
-          throw new Error('The API returned invalid price values');
+        if (prices.some(price => !Number.isFinite(price) || price < 0)) {
+          throw new Error(
+            'The historical API returned an invalid price format.'
+          );
         }
 
-        // Scale prices to retain additional decimal precision.
         const multiplier = 1e12;
+        let sum = 0;
 
-        const sum = prices.reduce((total, price) => {
-          return total + Math.round(price * multiplier);
-        }, 0);
+        for (const price of prices) {
+          sum += Math.round(price * multiplier);
+        }
 
         return sum / prices.length / multiplier;
       }
 
-      // Request historical prices directly from the API.
+      function formatSmallNumber(num, precision = 12) {
+        if (!Number.isFinite(num)) return 'Unavailable';
+        return num.toFixed(precision);
+      }
+
       async function fetchHistoricalPrices(date, currency) {
-        const url =
-          `https://price.hns.dev/historical?from=${encodeURIComponent(date)}` +
+        const query =
+          `?from=${encodeURIComponent(date)}` +
           `&currency=${encodeURIComponent(currency)}`;
 
-        const response = await fetch(url, {
-          cache: 'no-store'
-        });
-
-        if (!response.ok) {
-          throw new Error(
-            `${currency.toUpperCase()} API returned HTTP ${response.status}`
-          );
-        }
-
+        const response = await apiRequest('/historical' + query);
         const data = await response.json();
 
         if (!Array.isArray(data) || data.length === 0) {
-          console.error(
-            `${currency.toUpperCase()} API returned unexpected data:`,
-            data
-          );
-
+          console.error('Unexpected historical response:', data);
           throw new Error(
-            `No ${currency.toUpperCase()} historical prices were returned`
+            `No ${currency.toUpperCase()} historical data was returned for ${date}.`
           );
         }
 
@@ -427,28 +390,21 @@
           Number(item.price) >= 0
         );
 
-        if (validData.length === 0) {
-          console.error(
-            `${currency.toUpperCase()} data contains no valid prices:`,
-            data
-          );
-
+        if (!validData.length) {
           throw new Error(
-            `The ${currency.toUpperCase()} API response contains no valid prices`
+            `The ${currency.toUpperCase()} response contains no valid price records.`
           );
         }
 
         return validData;
       }
 
-      // Calculate and display the historical value.
       async function fetchHistoricalData(date, amount) {
         loading.style.display = 'block';
         result.style.display = 'none';
-        hideError();
+        clearError();
 
         try {
-          // Fetch USD and BTC data concurrently.
           const [usdData, btcData] = await Promise.all([
             fetchHistoricalPrices(date, 'usd'),
             fetchHistoricalPrices(date, 'btc')
@@ -457,64 +413,60 @@
           const avgUsd = calculatePreciseAverage(usdData);
           const avgBtc = calculatePreciseAverage(btcData);
 
-          const valUsd = Math.round(avgUsd * amount * 1e6) / 1e6;
-          const valBtc = avgBtc * amount;
+          const valueUsd = avgUsd * amount;
+          const valueBtc = avgBtc * amount;
 
           if (
-            !Number.isFinite(valUsd) ||
-            !Number.isFinite(valBtc)
+            !Number.isFinite(valueUsd) ||
+            !Number.isFinite(valueBtc)
           ) {
-            throw new Error('Calculated value is outside the supported range');
+            throw new Error('The calculated value is outside the supported range.');
           }
 
-          document.getElementById('price').textContent =
-            `$${valUsd.toLocaleString('en-US', {
+          $('price').textContent =
+            `$${valueUsd.toLocaleString('en-US', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 6
             })}`;
 
-          document.getElementById('price-btc').textContent =
-            `${formatSmallNumber(valBtc, 12)} BTC`;
+          $('price-btc').textContent =
+            `${formatSmallNumber(valueBtc, 12)} BTC`;
 
-          document.getElementById('date-info').textContent =
-            `Based on avg price $${avgUsd.toFixed(6)} / ` +
-            `${formatSmallNumber(avgBtc, 12)} BTC per HNS on ${date}`;
+          $('date-info').textContent =
+            `Based on ${usdData.length} USD and ${btcData.length} BTC records. ` +
+            `Average per HNS on ${date}: ` +
+            `$${avgUsd.toFixed(6)} / ` +
+            `${formatSmallNumber(avgBtc, 12)} BTC.`;
 
           result.style.display = 'block';
 
-          console.log('Historical price calculation:', {
+          console.log('Historical calculation:', {
             date,
-            usdDataPoints: usdData.length,
-            btcDataPoints: btcData.length,
+            usdRecords: usdData.length,
+            btcRecords: btcData.length,
             avgUsd,
             avgBtc,
-            calculatedValueUSD: valUsd,
-            calculatedValueBTC: valBtc
+            valueUsd,
+            valueBtc
           });
 
         } catch (err) {
           console.error('Historical price lookup failed:', err);
 
-          let message = err.message || 'Unknown error';
-
-          if (err instanceof TypeError) {
-            message =
-              'Network request failed. This may be a CORS, connectivity, ' +
-              'or API availability problem. Check the browser console.';
-          }
-
-          showError(`Price lookup failed: ${message}`);
+          showError(
+            `Price lookup failed: ${err.message || 'Unknown error'}. ` +
+            'Make sure server.py is running and its API routes are available.'
+          );
 
         } finally {
           loading.style.display = 'none';
         }
       }
 
-      // Validate input and start the calculation.
       calculateBtn.addEventListener('click', async () => {
-        if (requestInProgress) {
-          return;
-        }
+        if (requestInProgress) return;
+
+        clearError();
 
         if (!selectedDate) {
           showError('Please select a date.');
@@ -539,10 +491,10 @@
         }
 
         if (
-          selectedDate < minDate ||
-          selectedDate > getTodayUTC()
+          selectedDate < MIN_DATE ||
+          selectedDate > todayUTC()
         ) {
-          showError('Please select a date between 2020-02-13 and today.');
+          showError('Please select a valid date.');
           return;
         }
 
@@ -557,7 +509,10 @@
         }
       });
 
-      amountInput.addEventListener('input', hideError);
+      amountInput.addEventListener('input', clearError);
+
+      updateCalendar();
+      fetchCurrentPrice();
     });
   </script>
 </body>
