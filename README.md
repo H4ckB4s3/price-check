@@ -1,35 +1,14 @@
 # HNS Historical Price Calculator
 
-A web-based tool to calculate the historical USD value of Handshake (HNS) tokens since February 13, 2020. The calculator uses precise average price calculations to provide accurate historical valuations.
-
-## Features
-
-- Date picker with calendar interface
-- Current HNS price display
-- Precise average price calculations
-- USD and BTC value conversions
-- Responsive design
-
-## Dependencies
-
-This project relies on two external services:
-
-1. **Price API**: [`https://price.hns.dev/`](https://price.hns.dev/)
-   - Provides current and historical HNS price data
-   - Used endpoints:
-     - `/latest` - Current price
-     - `/historical?from={date}&currency={usd|btc}` - Historical prices
-
-2. **CORS Proxy**: [`https://corsproxy.io/`](https://corsproxy.io/)
-   - Enables cross-origin requests to the price API
-   - Required due to browser CORS restrictions
-
 ## Usage
 
-1. Select a date using the calendar picker
-2. Enter the amount of HNS tokens
-3. Click "Check Historical Price in USD"
-4. View the calculated USD and BTC values
+1. Open a terminal and navigate to the folder. For example:
+cd ~/Desktop/price-check-main (Adjust the path if your folder is somewhere else.)
+2. Start the Python server
+Run:
+python3 server.py
+3. Open your browser and visit:
+ http://127.0.0.1:8000/
 
 The calculator shows:
 - Historical USD value of your HNS
